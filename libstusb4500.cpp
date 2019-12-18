@@ -679,12 +679,14 @@ static stusb4500_status_t stusb4500_i2c_read(stusb4500_device_t *dev,
     HAL_I2C_Init(dev->i2c_hal);
   }
 #elif defined(__ARDUINO__)
-  size_t count = 0;
+  uint8_t reg_addr = (uint8_t)(mem_addr & 0xFF);
+  uint8_t buff_sz  = (uint8_t)(buff_dst_sz & 0xFF);
+  size_t count;
   dev->i2c_hal->beginTransmission(dev->i2c_slave_addr);
-  dev->i2c_hal->write(mem_addr);  // set register for read
+  dev->i2c_hal->write(reg_addr);  // set register for read
   dev->i2c_hal->endTransmission(false); // false to not release the line
   dev->i2c_hal->beginTransmission(dev->i2c_slave_addr);
-  dev->i2c_hal->requestFrom(dev->i2c_slave_addr, buff_dst_sz);
+  dev->i2c_hal->requestFrom(dev->i2c_slave_addr, buff_sz);
   count = dev->i2c_hal->readBytes(buff_dst, buff_dst_sz);
   if (count != buff_dst_sz)
     { status = HAL_ERROR; }
@@ -711,10 +713,12 @@ static stusb4500_status_t stusb4500_i2c_write(stusb4500_device_t *dev,
       buff_src_sz,
       __STUSB4500_I2C_WRITE_TIMEOUT_MS__);
 #elif defined(__ARDUINO__)
+  uint8_t reg_addr = (uint8_t)(mem_addr & 0xFF);
+  uint8_t buff_sz  = (uint8_t)(buff_src_sz & 0xFF);
   uint8_t result;
   dev->i2c_hal->beginTransmission(dev->i2c_slave_addr);
-  dev->i2c_hal->write(mem_addr); // command byte, sets register pointer address
-  dev->i2c_hal->write(buff_src, buff_src_sz);
+  dev->i2c_hal->write(reg_addr); // command byte, sets register pointer address
+  dev->i2c_hal->write(buff_src, buff_sz);
   result = dev->i2c_hal->endTransmission();
   if (result > 0)
     { status = HAL_ERROR; }
@@ -894,8 +898,8 @@ static stusb4500_status_t stusb4500_get_curr_snk_rdo(stusb4500_device_t *dev,
   if (rdo.b.Object_Pos > 0) {
 
     pdo_description->number         = rdo.b.Object_Pos;
-    pdo_description->current_ma     = rdo.b.OperatingCurrent;
-    pdo_description->max_current_ma = rdo.b.MaxCurrent;
+    pdo_description->current_ma     = rdo.b.OperatingCurrent * 10U;
+    pdo_description->max_current_ma = rdo.b.MaxCurrent * 10U;
 
     if (pdo_description->number <= dev->usbpd_status.pdo_snk_count) {
       pdo_description->voltage_mv =
