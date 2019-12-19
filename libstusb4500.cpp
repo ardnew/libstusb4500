@@ -542,6 +542,8 @@ stusb4500_status_t stusb4500_get_source_capabilities(stusb4500_device_t *dev)
   if (HAL_OK != (status = stusb4500_clr_all_src_pdos(dev)))
     { return status; }
 
+  stusb4500_wait_until_ready(dev);
+
   if (HAL_OK != (status = stusb4500_get_all_src_pdos(dev)))
     { return status; }
 
@@ -865,7 +867,7 @@ static stusb4500_status_t stusb4500_get_all_src_pdos(stusb4500_device_t *dev)
   if (NULL != dev->event_handler.source_capabilities_request_begin)
     { dev->event_handler.source_capabilities_request_begin(dev); }
 
-  static uint8_t const max_requests = 50U;
+  static uint8_t const max_requests = 20U;
 
   uint8_t request = 0U;
   stusb4500_status_t status = HAL_OK;
