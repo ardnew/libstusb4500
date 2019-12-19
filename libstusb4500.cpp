@@ -223,11 +223,9 @@ stusb4500_device_t *stusb4500_device_new(
 
         // event handlers undefined by default. user application must call the
         // respective setter routines after creating this struct, if needed.
-        dev->event_handler.cable_attached                    = NULL;
-        dev->event_handler.cable_detached                    = NULL;
-        dev->event_handler.source_capabilities_request_begin = NULL;
-        dev->event_handler.source_capabilities_request_end   = NULL;
-        dev->event_handler.source_capabilities_received      = NULL;
+        dev->event_handler.cable_attached               = NULL;
+        dev->event_handler.cable_detached               = NULL;
+        dev->event_handler.source_capabilities_received = NULL;
       }
     }
   }
@@ -529,10 +527,6 @@ stusb4500_status_t stusb4500_get_source_capabilities(stusb4500_device_t *dev)
   if (!__CABLE_CONNECTED(conn))
     { return HAL_ERROR; }
 
-  stusb4500_wait_until_ready(dev);
-
-  //stusb4500_soft_reset(dev, srwWaitReady);
-
   if (HAL_OK != (status = stusb4500_clear_all_alerts(dev, suaUnmaskAlerts)))
     { return status; }
 
@@ -627,22 +621,6 @@ void stusb4500_set_cable_detached(stusb4500_device_t *dev,
 {
   if ((NULL != dev) && (NULL != callback)) {
     dev->event_handler.cable_detached = callback;
-  }
-}
-
-void stusb4500_set_source_capabilities_request_begin(stusb4500_device_t *dev,
-    stusb4500_event_callback_t callback)
-{
-  if ((NULL != dev) && (NULL != callback)) {
-    dev->event_handler.source_capabilities_request_begin = callback;
-  }
-}
-
-void stusb4500_set_source_capabilities_request_end(stusb4500_device_t *dev,
-    stusb4500_event_callback_t callback)
-{
-  if ((NULL != dev) && (NULL != callback)) {
-    dev->event_handler.source_capabilities_request_end = callback;
   }
 }
 
@@ -790,6 +768,8 @@ static stusb4500_status_t stusb4500_get_all_snk_pdos(stusb4500_device_t *dev)
   uint8_t pdo_buff[BUFF_SZ];
   uint8_t pdo_count;
 
+  stusb4500_wait_until_ready(dev);
+
   stusb4500_status_t status = stusb4500_i2c_read(dev, DPM_PDO_NUMB, &pdo_count, 1U);
   if (HAL_OK != status)
     { return status; }
@@ -862,8 +842,7 @@ static stusb4500_status_t stusb4500_get_all_src_pdos(stusb4500_device_t *dev)
   if (NULL == dev)
     { return HAL_ERROR; }
 
-  if (NULL != dev->event_handler.source_capabilities_request_begin)
-    { dev->event_handler.source_capabilities_request_begin(dev); }
+  stusb4500_wait_until_ready(dev);
 
   static uint8_t const max_requests = 50U;
 
@@ -879,9 +858,6 @@ static stusb4500_status_t stusb4500_get_all_src_pdos(stusb4500_device_t *dev)
     stusb4500_process_alerts(dev);
     ++request;
   }
-
-  if (NULL != dev->event_handler.source_capabilities_request_end)
-    { dev->event_handler.source_capabilities_request_end(dev); }
 
   return status;
 }

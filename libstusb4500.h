@@ -158,8 +158,6 @@ struct stusb4500_event_handler
 {
   stusb4500_event_callback_t cable_attached;
   stusb4500_event_callback_t cable_detached;
-  stusb4500_event_callback_t source_capabilities_request_begin;
-  stusb4500_event_callback_t source_capabilities_request_end;
   stusb4500_event_callback_t source_capabilities_received;
 };
 
@@ -228,10 +226,6 @@ stusb4500_status_t stusb4500_select_power_usb_default(stusb4500_device_t *dev);
 void stusb4500_set_cable_attached(stusb4500_device_t *dev,
     stusb4500_event_callback_t callback);
 void stusb4500_set_cable_detached(stusb4500_device_t *dev,
-    stusb4500_event_callback_t callback);
-void stusb4500_set_source_capabilities_request_begin(stusb4500_device_t *dev,
-    stusb4500_event_callback_t callback);
-void stusb4500_set_source_capabilities_request_end(stusb4500_device_t *dev,
     stusb4500_event_callback_t callback);
 void stusb4500_set_source_capabilities_received(stusb4500_device_t *dev,
     stusb4500_event_callback_t callback);
