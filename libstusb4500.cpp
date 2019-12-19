@@ -396,7 +396,6 @@ void stusb4500_process_events(stusb4500_device_t *dev)
   // process attach events first so that we don't do any unnecessary
   // processing until a cable is actually attached
   while (0U != usm->attach_received) {
-    //__SYS_DELAY(__STUSB4500_ATTACH_DEBOUNCE_MS__);
     //__NO_INTERRUPT(usm->attach_received = 0U);
     __NO_INTERRUPT(--(usm->attach_received));
     stusb4500_process_attach(dev);
@@ -408,6 +407,7 @@ void stusb4500_process_events(stusb4500_device_t *dev)
       if (__CABLE_CONNECTED(conn)) {
         if (NULL != dev->event_handler.cable_attached)
           { dev->event_handler.cable_attached(dev); }
+        __SYS_DELAY(__STUSB4500_ATTACH_DEBOUNCE_MS__);
       }
       else {
         // verify the new state isn't an error state -- that we have positively
@@ -846,7 +846,7 @@ static stusb4500_status_t stusb4500_get_all_src_pdos(stusb4500_device_t *dev)
 
   stusb4500_wait_until_ready(dev);
 
-  static uint8_t const max_requests = 20U;
+  static uint8_t const max_requests = 50U;
 
   uint8_t request = 0U;
   stusb4500_status_t status = HAL_OK;
@@ -857,6 +857,7 @@ static stusb4500_status_t stusb4500_get_all_src_pdos(stusb4500_device_t *dev)
       (request < max_requests)) {
     if (HAL_OK != (status = stusb4500_usbpd_cable_reset(dev)))
       { break; }
+    __SYS_DELAY(5);
     stusb4500_process_alerts(dev);
     ++request;
   }
