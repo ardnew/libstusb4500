@@ -73,9 +73,18 @@ typedef enum
   srwNONE = -1,
   srwDoNotWait, // = 0
   srwWaitReady, // = 1
-  srwCOUNT,     // = 2
+  srwCOUNT      // = 2
 }
 stusb4500_reset_wait_t;
+
+typedef enum
+{
+  sptNONE = -1,
+  sptPowerOff, // = 0
+  sptPowerOn,  // = 1
+  sptCOUNT     // = 2
+}
+stusb4500_power_toggle_t;
 
 typedef enum
 {
@@ -83,7 +92,7 @@ typedef enum
   ssfFixed,    // = 0
   ssfVariable, // = 1
   ssfBattery,  // = 2
-  ssfCOUNT,    // = 3
+  ssfCOUNT     // = 3
 }
 stusb4500_supply_fix_t;
 
@@ -204,6 +213,8 @@ stusb4500_status_t stusb4500_ready(stusb4500_device_t *dev);
 void stusb4500_wait_until_ready(stusb4500_device_t *dev);
 void stusb4500_hard_reset(stusb4500_device_t *dev, stusb4500_reset_wait_t wait);
 void stusb4500_soft_reset(stusb4500_device_t *dev, stusb4500_reset_wait_t wait);
+void stusb4500_power_toggle(stusb4500_device_t *dev,
+    stusb4500_power_toggle_t toggle, stusb4500_reset_wait_t wait);
 
 // main loop event
 void stusb4500_process_events(stusb4500_device_t *dev);
@@ -218,6 +229,7 @@ void stusb4500_attach(stusb4500_device_t *dev);
 stusb4500_cable_connected_t stusb4500_cable_connected(stusb4500_device_t *dev);
 
 stusb4500_status_t stusb4500_get_source_capabilities(stusb4500_device_t *dev);
+stusb4500_status_t stusb4500_get_sink_capabilities(stusb4500_device_t *dev);
 stusb4500_pdo_description_t stusb4500_power_requested(stusb4500_device_t *dev);
 stusb4500_status_t stusb4500_set_power(stusb4500_device_t *dev,
     uint32_t voltage_mv, uint32_t current_ma);

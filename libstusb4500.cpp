@@ -251,7 +251,7 @@ stusb4500_status_t stusb4500_device_init(stusb4500_device_t *dev)
 
   stusb4500_wait_until_ready(dev);
 
-  //stusb4500_soft_reset(dev, srwWaitReady);
+  //stusb4500_hard_reset(dev, srwWaitReady);
 
   if (HAL_OK != (status = stusb4500_set_num_snk_pdos(dev, 1U)))
     { return status; }
@@ -331,7 +331,6 @@ void stusb4500_hard_reset(stusb4500_device_t *dev, stusb4500_reset_wait_t wait)
       // second, try querying the device
       stusb4500_wait_until_ready(dev);
       break;
-
     case srwDoNotWait:
     default:
       break;
@@ -369,12 +368,56 @@ void stusb4500_soft_reset(stusb4500_device_t *dev, stusb4500_reset_wait_t wait)
     case srwWaitReady:
       // first, wait for I2C registers to be initialized from NVM
       __SYS_DELAY(__STUSB4500_TLOAD_REG_INIT_MS__);
-
       // second, try querying the device
       stusb4500_wait_until_ready(dev);
       break;
-
     case srwDoNotWait:
+    default:
+      break;
+  }
+}
+
+void stusb4500_power_toggle(stusb4500_device_t *dev,
+    stusb4500_power_toggle_t toggle, stusb4500_reset_wait_t wait)
+{
+  if (NULL == dev)
+    { return; }
+
+  switch (toggle) {
+
+    case sptPowerOff:
+#if defined(__STM32_HAL__)
+      HAL_GPIO_WritePin(dev->reset_port, dev->reset_pin, __GPIO_PIN_SET__);
+      __SYS_DELAY(25);
+#elif defined(__ARDUINO__)
+      digitalWrite(dev->reset_pin, HIGH);
+      __SYS_DELAY(25);
+#endif
+      break;
+
+    case sptPowerOn:
+#if defined(__STM32_HAL__)
+      HAL_GPIO_WritePin(dev->reset_port, dev->reset_pin, __GPIO_PIN_CLR__);
+      __SYS_DELAY(15);
+#elif defined(__ARDUINO__)
+      digitalWrite(dev->reset_pin, LOW);
+      __SYS_DELAY(15);
+#endif
+      // only wait until ready in the case we are toggling power ON. if we are
+      // powered OFF, then we cannot respond to the I2C request.
+      switch (wait) {
+        case srwWaitReady:
+          // first, wait for I2C registers to be initialized from NVM
+          __SYS_DELAY(__STUSB4500_TLOAD_REG_INIT_MS__);
+          // second, try querying the device
+          stusb4500_wait_until_ready(dev);
+          break;
+        case srwDoNotWait:
+        default:
+          break;
+      }
+      break;
+
     default:
       break;
   }
@@ -539,6 +582,25 @@ stusb4500_status_t stusb4500_get_source_capabilities(stusb4500_device_t *dev)
   stusb4500_wait_until_ready(dev);
 
   if (HAL_OK != (status = stusb4500_get_all_src_pdos(dev)))
+    { return status; }
+
+  return HAL_OK;
+}
+
+stusb4500_status_t stusb4500_get_sink_capabilities(stusb4500_device_t *dev)
+{
+  if (NULL == dev)
+    { return HAL_ERROR; }
+
+  stusb4500_status_t status;
+
+  stusb4500_cable_connected_t conn = stusb4500_cable_connected(dev);
+  if (!__CABLE_CONNECTED(conn))
+    { return HAL_ERROR; }
+
+  stusb4500_wait_until_ready(dev);
+
+  if (HAL_OK != (status = stusb4500_get_all_snk_pdos(dev)))
     { return status; }
 
   return HAL_OK;
@@ -857,7 +919,6 @@ static stusb4500_status_t stusb4500_get_all_src_pdos(stusb4500_device_t *dev)
       (request < max_requests)) {
     if (HAL_OK != (status = stusb4500_usbpd_cable_reset(dev)))
       { break; }
-    __SYS_DELAY(5);
     stusb4500_process_alerts(dev);
     ++request;
   }
@@ -943,6 +1004,8 @@ static void stusb4500_process_alerts(stusb4500_device_t *dev)
   alert_mask.d8   = read_buff[1];
   alert_status.d8 = read_buff[0] & ~(alert_mask.d8);
 
+  //Serial.printf("alert_status = 0x%02x\n", alert_status.d8);
+
   stusb4500_usbpd_push_interrupt(dev, alert_status.d8);
 
   if (0U != alert_status.d8) {
@@ -968,6 +1031,7 @@ static void stusb4500_process_alerts(stusb4500_device_t *dev)
       if (HAL_OK != status)
         { return; }
       dev->usbpd_status.monitoring_status.d8 = read_buff[1];
+      //Serial.printf("monitoring_status = 0x%02x\n", dev->usbpd_status.monitoring_status.d8);
     }
 
     // always read & update CC attachement status
@@ -993,6 +1057,8 @@ static void stusb4500_process_alerts(stusb4500_device_t *dev)
       if (HAL_OK != status)
         { return; }
       dev->usbpd_status.prt_status.d8 = read_buff[0];
+
+      //Serial.printf("prt_status = 0x%02x\n", dev->usbpd_status.prt_status.d8);
 
       if (1U == dev->usbpd_status.prt_status.b.MSG_RECEIVED) {
 
@@ -1024,6 +1090,8 @@ static void stusb4500_process_alerts(stusb4500_device_t *dev)
               dev->usbpd_status.pdo_src_count = header.b.data_object_count;
               for (uint8_t i = 0, j = 0; i < header.b.data_object_count; ++i, j += 4) {
                 dev->usbpd_status.pdo_src[i].d32 = __U32_LEND(&read_buff[j]);
+                if (0U == i)
+                  { dev->usbpd_status.pdo_src[i].fix.Voltage = 100U; }
               }
 
               dev->usbpd_state_machine.src_pdo_requesting = 0U;
